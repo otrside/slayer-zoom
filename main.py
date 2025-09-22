@@ -103,19 +103,16 @@ while True:
             if not command.startswith('/'):
                 continue
 
-            args = ''
-
             if command.startswith('/zoom'):
                 args = command.split('/zoom')
 
-            if len(args) == 0:
-                continue
-
-            try:
-                arg = float(args[1].strip())
-                slayer.set_camera_zoom(arg)
-            except:
-                pass
+                if len(args) == 0:
+                    continue
+                try:
+                    arg = float(args[1].strip())
+                    slayer.set_camera_zoom(arg)
+                except:
+                    pass
 
             if command == '/default':
                 slayer.set_camera_zoom(slayer.CAMERA_DEFAULT)
