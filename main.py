@@ -4,17 +4,17 @@ from enum import IntEnum
 from time import sleep
 import platform
 import os
-
-LAST_COMMAND = None
+import psutil
 
 if platform.system() != 'Windows':
     input('[INFO] -> Esse programa está disponível apenas para Windows.')
     os._exit(1)
 
+
 class Client:
 
-    def __init__(self) -> None:
-        self.process = pymem.Pymem('main.exe')
+    def __init__(self, pid: int) -> None:
+        self.process = pymem.Pymem(pid)
 
     def __get_module(self, module: str) -> int:
         return pymem.pymem.process.module_from_name(self.process.process_handle, module).lpBaseOfDll
@@ -24,7 +24,7 @@ class Client:
 
     def read_int32(self, address: int, module: int) -> int:
         return self.process.read_int(address + module)
-    
+
     def read_float32(self, address: int, module: int) -> float:
         return self.process.read_float(address + module)
 
@@ -33,21 +33,22 @@ class Client:
 
     def main_module(self) -> int:
         return self.__get_module('main.exe')
-    
+
     def igcn_module(self) -> int:
         return self.__get_module('IGC.dll')
 
+
 class PlayerAddress(IntEnum):
     CAMERA_ZOOM: float = 0x1858620              # FLOAT32
-    CAMERA_CRYWOLF: float = 0x1588FC            # FLOAT32i
+    CAMERA_CRYWOLF: float = 0x1588FC            # FLOAT32
     MESSAGE: str = 0x6A599B8                    # STRING
 
 class Slayer(Client):
 
     CAMERA_DEFAULT: float = 39.0
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, pid: int):
+        super().__init__(pid)
 
     def camera_address(self) -> int:
         return PlayerAddress.CAMERA_ZOOM + self.main_module()
@@ -61,12 +62,13 @@ class Slayer(Client):
 
     def __zoom_maps(self, value: float) -> float:
         return self.write_float32(PlayerAddress.CAMERA_ZOOM + self.main_module(), value)
-    
+
     def __zoom_crywolf(self, value: float) -> float:
         return self.write_float32(PlayerAddress.CAMERA_CRYWOLF + self.igcn_module(), value)
 
     def message(self) -> str:
         return self.read_string(PlayerAddress.MESSAGE, self.main_module())
+
 
 class SlayerError(Exception):
     def __init__(self, error: any):
@@ -75,53 +77,53 @@ class SlayerError(Exception):
         self.message = None
 
         if 'Could not open process' in error:
-          self.message = 'Abra o .exe como Administrador.'
-          
+            self.message = 'Abra o .exe como Administrador.'
+
         if 'Could not find process' in error:
-           self.message = 'Seu Jogo está fechado. Abra o MU e execute o programa novamente.'  
+            self.message = 'Seu Jogo está fechado. Abra o MU e execute o programa novamente.'
 
         if not self.message:
-            self.message = 'Ocorreum um erro indesejado.' 
+            self.message = 'Ocorreum um erro indesejado.'
             print(f'[ERROR] -> ', error)
 
         super().__init__(self.message)
 
+
 while True:
     try:
-        slayer = Slayer()
+        for process in psutil.process_iter(['pid', 'name']):
 
-        command = slayer.message().lower()
-
-        if LAST_COMMAND == command:
-            continue
-
-        if not command.startswith('/'):
-            continue
-
-        if command.startswith('/zoom'):
-            args = command.split('/zoom')
-
-            if len(args) == 0: 
+            if process.info['name'] != 'main.exe':
                 continue
-        
+
+            slayer = Slayer(process.info['pid'])
+
+            command = slayer.message().lower()
+
+            if not command.startswith('/'):
+                continue
+
+            args = ''
+
+            if command.startswith('/zoom'):
+                args = command.split('/zoom')
+
+            if len(args) == 0:
+                continue
+
             try:
                 arg = float(args[1].strip())
-
                 slayer.set_camera_zoom(arg)
-                LAST_COMMAND = command
-                print(f'[INFO] -> Camera setada para', arg)
             except:
                 pass
 
-        if command == '/default':
-            slayer.set_camera_zoom(slayer.CAMERA_DEFAULT)
-            print(f'[INFO] -> Camera resetada.')
-            LAST_COMMAND = '/default'
-        
-        if command.startswith('/stop'):
-            input('[INFO] -> Programa finalizado.')
-            break
-    
+            if command == '/default':
+                slayer.set_camera_zoom(slayer.CAMERA_DEFAULT)
+
+            if command.startswith('/stop'):
+                input('[INFO] -> Programa finalizado.')
+                break
+
         sleep(0.3)
 
     except (exception.ProcessNotFound, exception.CouldNotOpenProcess) as Error:
