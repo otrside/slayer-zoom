@@ -5,11 +5,11 @@ from time import sleep
 import platform
 import os
 
-if platform.system() != 'Windows':
-    print('[INFO] -> Esse programa está disponível apenas para Windows.')
-    os._exit(1)
-
 LAST_COMMAND = None
+
+if platform.system() != 'Windows':
+    input('[INFO] -> Esse programa está disponível apenas para Windows.')
+    os._exit(1)
 
 class Client:
 
@@ -41,7 +41,6 @@ class PlayerAddress(IntEnum):
     CAMERA_ZOOM: float = 0x1858620              # FLOAT32
     CAMERA_CRYWOLF: float = 0x1588FC            # FLOAT32i
     MESSAGE: str = 0x6A599B8                    # STRING
-
 
 class Slayer(Client):
 
@@ -120,11 +119,11 @@ while True:
             LAST_COMMAND = '/default'
         
         if command.startswith('/stop'):
-            print('[INFO] -> Programa finaliza.')
+            input('[INFO] -> Programa finalizado.')
             break
     
         sleep(0.3)
 
     except (exception.ProcessNotFound, exception.CouldNotOpenProcess) as Error:
-        print(SlayerError(Error))
+        input(SlayerError(Error))
         break
