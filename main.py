@@ -1,10 +1,11 @@
 import pymem
 from pymem import exception
 from enum import IntEnum
-from time import sleep
 import platform
 import os
 import psutil
+
+COMMANDS = {}
 
 if platform.system() != 'Windows':
     input('[INFO] -> Esse programa está disponível apenas para Windows.')
@@ -14,7 +15,8 @@ if platform.system() != 'Windows':
 class Client:
 
     def __init__(self, pid: int) -> None:
-        self.process = pymem.Pymem(pid)
+        self.pid = pid
+        self.process = pymem.Pymem(self.pid)
 
     def __get_module(self, module: str) -> int:
         return pymem.pymem.process.module_from_name(self.process.process_handle, module).lpBaseOfDll
@@ -37,11 +39,12 @@ class Client:
     def igcn_module(self) -> int:
         return self.__get_module('IGC.dll')
 
-
 class PlayerAddress(IntEnum):
     CAMERA_ZOOM: float = 0x1858620              # FLOAT32
     CAMERA_CRYWOLF: float = 0x1588FC            # FLOAT32
     MESSAGE: str = 0x6A599B8                    # STRING
+    NAME: str = 0x1589F1                        # STRING
+    MAP_ID: int = 0x18585EC                     # INT32
 
 class Slayer(Client):
 
@@ -69,6 +72,22 @@ class Slayer(Client):
     def message(self) -> str:
         return self.read_string(PlayerAddress.MESSAGE, self.main_module())
 
+    def name(self) -> str:
+        return self.read_string(PlayerAddress.NAME, self.igcn_module())
+    
+    def is_logged(self) -> bool:
+       try:
+            mapsDisabled = [73, 74, 75, 76, 78, 93, 94] # 93 SelectServer / 94 SelectCharacter
+
+            if self.map_id() in mapsDisabled:
+                return False
+            
+            return True
+       except:
+           return False
+
+    def map_id(self) -> int:
+        return self.read_int32(PlayerAddress.MAP_ID, self.main_module())
 
 class SlayerError(Exception):
     def __init__(self, error: any):
@@ -98,9 +117,16 @@ while True:
 
             slayer = Slayer(process.info['pid'])
 
+            if not slayer.is_logged():
+                continue
+
+            playerName = slayer.name()
             command = slayer.message().lower()
 
             if not command.startswith('/'):
+                continue
+
+            if playerName in COMMANDS and COMMANDS[playerName] == command:
                 continue
 
             if command.startswith('/zoom'):
@@ -108,20 +134,25 @@ while True:
 
                 if len(args) == 0:
                     continue
+
                 try:
                     arg = float(args[1].strip())
+
                     slayer.set_camera_zoom(arg)
+                    COMMANDS[playerName] = command
+                    print(
+                        f'[INFO] -> Camera de {playerName} foi setada para', arg)
                 except:
                     pass
 
             if command == '/default':
                 slayer.set_camera_zoom(slayer.CAMERA_DEFAULT)
+                print(f'[INFO] -> Camera de {playerName} resetada.')
+                COMMANDS[playerName] = '/default'
 
             if command.startswith('/stop'):
                 input('[INFO] -> Programa finalizado.')
                 break
-
-        sleep(0.3)
 
     except (exception.ProcessNotFound, exception.CouldNotOpenProcess) as Error:
         input(SlayerError(Error))
