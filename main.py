@@ -102,7 +102,7 @@ class SlayerError(Exception):
             self.message = 'Seu Jogo está fechado. Abra o MU e execute o programa novamente.'
 
         if not self.message:
-            self.message = 'Ocorreum um erro indesejado.'
+            self.message = 'Ocorreu um erro indesejado.'
             print(f'[ERROR] -> ', error)
 
         super().__init__(self.message)
