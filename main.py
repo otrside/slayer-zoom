@@ -5,8 +5,6 @@ import platform
 import os
 import psutil
 
-COMMANDS = {}
-
 if platform.system() != 'Windows':
     input('[INFO] -> Esse programa está disponível apenas para Windows.')
     os._exit(1)
@@ -33,11 +31,15 @@ class Client:
     def write_float32(self, address: int, value: float) -> float:
         return self.process.write_float(address, value)
 
+    def write_string(self, address: int, value: float) -> float:
+        return self.process.write_string(address, value)
+
     def main_module(self) -> int:
         return self.__get_module('main.exe')
 
     def igcn_module(self) -> int:
         return self.__get_module('IGC.dll')
+
 
 class PlayerAddress(IntEnum):
     CAMERA_ZOOM: float = 0x1858620              # FLOAT32
@@ -46,9 +48,12 @@ class PlayerAddress(IntEnum):
     NAME: str = 0x1589F1                        # STRING
     MAP_ID: int = 0x18585EC                     # INT32
 
+
 class Slayer(Client):
 
     CAMERA_DEFAULT: float = 39.0
+    # 93 SelectServer / 94 SelectCharacter
+    __MAPSDISABLED: list[int] = [73, 74, 75, 76, 78, 93, 94]
 
     def __init__(self, pid: int):
         super().__init__(pid)
@@ -62,32 +67,35 @@ class Slayer(Client):
     def set_camera_zoom(self, value: float) -> None:
         self.__zoom_maps(value)
         self.__zoom_crywolf(value)
+        self.__set_message('.')
 
     def __zoom_maps(self, value: float) -> float:
         return self.write_float32(PlayerAddress.CAMERA_ZOOM + self.main_module(), value)
 
     def __zoom_crywolf(self, value: float) -> float:
         return self.write_float32(PlayerAddress.CAMERA_CRYWOLF + self.igcn_module(), value)
+    
+    def __set_message(self, value: float) -> float:
+        return self.write_string(PlayerAddress.MESSAGE + self.main_module(), value)
 
     def message(self) -> str:
         return self.read_string(PlayerAddress.MESSAGE, self.main_module())
 
     def name(self) -> str:
         return self.read_string(PlayerAddress.NAME, self.igcn_module())
-    
-    def is_logged(self) -> bool:
-       try:
-            mapsDisabled = [73, 74, 75, 76, 78, 93, 94] # 93 SelectServer / 94 SelectCharacter
 
-            if self.map_id() in mapsDisabled:
+    def is_logged(self) -> bool:
+        try:
+            if self.map_id() in self.__MAPSDISABLED:
                 return False
-            
+
             return True
-       except:
-           return False
+        except:
+            return False
 
     def map_id(self) -> int:
         return self.read_int32(PlayerAddress.MAP_ID, self.main_module())
+
 
 class SlayerError(Exception):
     def __init__(self, error: any):
@@ -126,9 +134,6 @@ while True:
             if not command.startswith('/'):
                 continue
 
-            if playerName in COMMANDS and COMMANDS[playerName] == command:
-                continue
-
             if command.startswith('/zoom'):
                 args = command.split('/zoom')
 
@@ -139,7 +144,6 @@ while True:
                     arg = float(args[1].strip())
 
                     slayer.set_camera_zoom(arg)
-                    COMMANDS[playerName] = command
                     print(
                         f'[INFO] -> Camera de {playerName} foi setada para', arg)
                 except:
@@ -148,7 +152,6 @@ while True:
             if command == '/default':
                 slayer.set_camera_zoom(slayer.CAMERA_DEFAULT)
                 print(f'[INFO] -> Camera de {playerName} resetada.')
-                COMMANDS[playerName] = '/default'
 
             if command.startswith('/stop'):
                 input('[INFO] -> Programa finalizado.')
