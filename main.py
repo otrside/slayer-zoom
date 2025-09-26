@@ -1,5 +1,4 @@
 import pymem
-from pymem import exception
 from enum import IntEnum
 import platform
 import os
@@ -23,7 +22,7 @@ class Client:
 
     def __get_module(self, module: str) -> int|None:
         return pymem.pymem.process.module_from_name(self.process.process_handle, module).lpBaseOfDll
-
+    
     def read_string(self, address: int, module: int) -> any:
         return self.process.read_string(address + module, encoding='UTF-8')
 
@@ -103,24 +102,23 @@ class Slayer(Client):
     def map_id(self) -> int:
         return self.read_int32(PlayerAddress.MAP_ID, self.main_module())
 
-class SlayerError(Exception):
+class SlayerError:
     def __init__(self, error: any):
+        self.message = str(error)
 
-        error = str(error)
-        self.message = None
+        if 'Could not open process' in self.message:
+            input(self.process_permission_error())
+            os._exit(1)
 
-        if 'Could not open process' in error:
-            self.message = 'Abra o .exe como Administrador.'
+        if 'Could not find process' in self.message:
+            print(self.process_not_found_error())
 
-        if 'Could not find process' in error:
-            self.message = 'Seu Jogo está fechado. Abra o MU e execute o programa novamente.'
+    def process_permission_error(self) -> str:
+        return 'Abra o .exe como Administrador.'
 
-        if not self.message:
-            self.message = 'Ocorreu um erro indesejado.'
-            print(f'[ERROR] -> ', error)
-
-        super().__init__(self.message)
-
+    def process_not_found_error(self) -> str:
+        return 'Seu Jogo está fechado. Abra o MU e execute o programa novamente.'
+    
 while True:
     try:
         for process in psutil.process_iter(['pid', 'name']):
@@ -174,6 +172,5 @@ while True:
                 slayer.clear_message()
                 os._exit(1)
 
-    except (exception.ProcessNotFound, exception.CouldNotOpenProcess) as Error:
-        os.system('cls')
-        print(SlayerError(Error))
+    except Exception as Error:
+        SlayerError(Error)
