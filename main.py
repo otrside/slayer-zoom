@@ -110,14 +110,8 @@ class SlayerError:
             input(self.process_permission_error())
             os._exit(1)
 
-        if 'Could not find process' in self.message:
-            print(self.process_not_found_error())
-
     def process_permission_error(self) -> str:
         return 'Abra o .exe como Administrador.'
-
-    def process_not_found_error(self) -> str:
-        return 'Seu Jogo está fechado. Abra o MU e execute o programa novamente.'
     
 while True:
     try:
