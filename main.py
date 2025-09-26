@@ -150,7 +150,7 @@ while True:
 
                     print(
                         f'[INFO] -> Camera de {playerName} foi setada para', arg)                    
-                except:
+                except ValueError:
                     print(f'[INFO] -> {args[0]} não é um número. O comando {PREFIX}zoom aceita apenas número.')
                     slayer.clear_message()
                 finally:
