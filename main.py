@@ -5,10 +5,15 @@ import platform
 import os
 import psutil
 
+PREFIX = '/'
+CURRENT_VERSION = '1.0.5'
+
 if platform.system() != 'Windows':
     input('[INFO] -> Esse programa está disponível apenas para Windows.')
     os._exit(1)
 
+print('Bem-vindo ao Slayer Zoom')
+print(f'Versão: {CURRENT_VERSION}')
 
 class Client:
 
@@ -16,10 +21,10 @@ class Client:
         self.pid = pid
         self.process = pymem.Pymem(self.pid)
 
-    def __get_module(self, module: str) -> int:
+    def __get_module(self, module: str) -> int|None:
         return pymem.pymem.process.module_from_name(self.process.process_handle, module).lpBaseOfDll
 
-    def read_string(self, address: int, module: int) -> str:
+    def read_string(self, address: int, module: int) -> any:
         return self.process.read_string(address + module, encoding='UTF-8')
 
     def read_int32(self, address: int, module: int) -> int:
@@ -28,18 +33,17 @@ class Client:
     def read_float32(self, address: int, module: int) -> float:
         return self.process.read_float(address + module)
 
-    def write_float32(self, address: int, value: float) -> float:
-        return self.process.write_float(address, value)
+    def write_float32(self, address: int, value: float) -> None:
+        self.process.write_float(address, value)
 
-    def write_string(self, address: int, value: float) -> float:
-        return self.process.write_string(address, value)
+    def write_string(self, address: int, value: float) -> None:
+        self.process.write_string(address, value)
 
     def main_module(self) -> int:
         return self.__get_module('main.exe')
 
     def igcn_module(self) -> int:
         return self.__get_module('IGC.dll')
-
 
 class PlayerAddress(IntEnum):
     CAMERA_ZOOM: float = 0x1858620              # FLOAT32
@@ -48,10 +52,10 @@ class PlayerAddress(IntEnum):
     NAME: str = 0x1589F1                        # STRING
     MAP_ID: int = 0x18585EC                     # INT32
 
-
 class Slayer(Client):
 
     CAMERA_DEFAULT: float = 39.0
+
     # 93 SelectServer / 94 SelectCharacter
     __MAPSDISABLED: list[int] = [73, 74, 75, 76, 78, 93, 94]
 
@@ -65,18 +69,21 @@ class Slayer(Client):
         return self.read_float32(PlayerAddress.CAMERA_ZOOM, self.main_module())
 
     def set_camera_zoom(self, value: float) -> None:
-        self.__zoom_maps(value)
+        self.__zoom(value)
         self.__zoom_crywolf(value)
-        self.__set_message('.')
+        self.clear_message()
 
-    def __zoom_maps(self, value: float) -> float:
-        return self.write_float32(PlayerAddress.CAMERA_ZOOM + self.main_module(), value)
+    def __zoom(self, value: float) -> None:
+        self.write_float32(PlayerAddress.CAMERA_ZOOM + self.main_module(), value)
 
-    def __zoom_crywolf(self, value: float) -> float:
-        return self.write_float32(PlayerAddress.CAMERA_CRYWOLF + self.igcn_module(), value)
+    def __zoom_crywolf(self, value: float) -> None:
+        self.write_float32(PlayerAddress.CAMERA_CRYWOLF + self.igcn_module(), value)
     
-    def __set_message(self, value: float) -> float:
-        return self.write_string(PlayerAddress.MESSAGE + self.main_module(), value)
+    def __set_message(self, value: str = '.') -> None:
+        self.write_string(PlayerAddress.MESSAGE + self.main_module(), value)
+    
+    def clear_message(self) -> None:
+        self.__set_message()
 
     def message(self) -> str:
         return self.read_string(PlayerAddress.MESSAGE, self.main_module())
@@ -96,7 +103,6 @@ class Slayer(Client):
     def map_id(self) -> int:
         return self.read_int32(PlayerAddress.MAP_ID, self.main_module())
 
-
 class SlayerError(Exception):
     def __init__(self, error: any):
 
@@ -115,7 +121,6 @@ class SlayerError(Exception):
 
         super().__init__(self.message)
 
-
 while True:
     try:
         for process in psutil.process_iter(['pid', 'name']):
@@ -129,34 +134,46 @@ while True:
                 continue
 
             playerName = slayer.name()
-            command = slayer.message().lower()
+            message = slayer.message().lower().strip()
 
-            if not command.startswith('/'):
+            if not message.startswith(PREFIX):
                 continue
 
-            if command.startswith('/zoom'):
-                args = command.split('/zoom')
+            content = message[1:].split(' ')
+
+            commandName = content[0]
+            args = content[1:]
+
+            if commandName == 'zoom':
 
                 if len(args) == 0:
+                    print(f'[INFO] -> Use o comando dessa maneira: {PREFIX}zoom <número>')
+                    slayer.clear_message()
                     continue
 
                 try:
-                    arg = float(args[1].strip())
+                    arg = float(args[0])
 
                     slayer.set_camera_zoom(arg)
+
                     print(
-                        f'[INFO] -> Camera de {playerName} foi setada para', arg)
+                        f'[INFO] -> Camera de {playerName} foi setada para', arg)                    
                 except:
-                    pass
+                    print(f'[INFO] -> {args[0]} não é um número. O comando {PREFIX}zoom aceita apenas número.')
+                    slayer.clear_message()
+                finally:
+                    continue
 
-            if command == '/default':
+            if commandName == 'default':
                 slayer.set_camera_zoom(slayer.CAMERA_DEFAULT)
-                print(f'[INFO] -> Camera de {playerName} resetada.')
+                print(f'[INFO] -> Camera de {playerName} foi resetada.')
+                continue
 
-            if command.startswith('/stop'):
+            if commandName == 'stop':
                 input('[INFO] -> Programa finalizado.')
-                break
+                slayer.clear_message()
+                os._exit(1)
 
     except (exception.ProcessNotFound, exception.CouldNotOpenProcess) as Error:
-        input(SlayerError(Error))
-        break
+        os.system('cls')
+        print(SlayerError(Error))

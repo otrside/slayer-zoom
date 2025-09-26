@@ -5,5 +5,9 @@ O projeto funciona em todos os servidores da IGCN da versão 20 parte 2-3 (O pro
 
 # COMANDOS
 - /zoom <número> | Aumentar ou diminuir o Zoom
+- - Exemplo: /zoom 10 ou /zoom 10.4
 - /default | Volta a camera para o padrão (39.0)
 - /stop <número> | Finaliza o programa
+
+# Contato
+Qualquer problema entre em contato comigo via Discord (@nicaksk) ou abra um issues
