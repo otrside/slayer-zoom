@@ -10,4 +10,4 @@ O projeto funciona em todos os servidores da IGCN da versão 20 parte 2-3 (O pro
 - /stop <número> | Finaliza o programa
 
 # Contato
-Qualquer problema entre em contato comigo via Discord (@nicaksk) ou abra um issues
+Qualquer problema entre em contato comigo via Discord (@nicaksks) ou abra um issues
