@@ -128,8 +128,6 @@ while True:
             playerName = slayer.name()
             message = slayer.message().lower().strip()
 
-            print(message)
-
             if not message.startswith(PREFIX):
                 continue
 
