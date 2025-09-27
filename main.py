@@ -128,6 +128,8 @@ while True:
             playerName = slayer.name()
             message = slayer.message().lower().strip()
 
+            print(message)
+
             if not message.startswith(PREFIX):
                 continue
 
@@ -152,8 +154,8 @@ while True:
                         f'[INFO] -> Camera de {playerName} foi setada para', arg)                    
                 except ValueError:
                     print(f'[INFO] -> {args[0]} não é um número. O comando {PREFIX}zoom aceita apenas número.')
-                    slayer.clear_message()
                 finally:
+                    slayer.clear_message()
                     continue
 
             if commandName == 'default':
